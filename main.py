@@ -62,6 +62,7 @@ def forecast_market(prices, horizon):
     # Recency weights by age in minutes, precomputed once.
     weights = [0.5 ** (age / HALF_LIFE) for age in range(n)]
     grid = {}
+    prev_pairs = None
     for h in H_GRID:
         if h > horizon:
             continue
@@ -71,6 +72,11 @@ def forecast_market(prices, horizon):
             pairs.append((prices[i + h] - prices[i], weights[m - 1 - i]))
         if not pairs:
             pairs = [(0.0, 1.0)]
+        elif len(pairs) < 8 and prev_pairs is not None:
+            # Too few changes to trust the tails (a market listed minutes
+            # ago): reuse the nearest shorter horizon's distribution.
+            pairs = prev_pairs
+        prev_pairs = pairs
         row = [0.0] * 5
         row[0] = x + wquantile(pairs, 0.05)
         row[1] = x + wquantile(pairs, 0.25)
